@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn(){return request.auth != null;}
+  function validText(v,n){return v is string && v.size()>0 && v.size()<=n;}
+  match /users/{uid}{
+   allow read:if signedIn();
+   allow create:if signedIn()&&request.auth.uid==uid&&request.resource.data.uid==uid;
+   allow update:if signedIn()&&request.auth.uid==uid&&request.resource.data.uid==resource.data.uid;
+   allow delete:if false;
+  }
+  match /posts/{pid}{
+   allow read:if signedIn();
+   allow create:if signedIn()&&request.resource.data.authorId==request.auth.uid&&validText(request.resource.data.text,1000)&&request.resource.data.likeCount==0&&request.resource.data.commentCount==0;
+   allow update:if signedIn()&&resource.data.authorId==request.auth.uid&&request.resource.data.authorId==resource.data.authorId;
+   allow delete:if signedIn()&&resource.data.authorId==request.auth.uid;
+   match /likes/{uid}{
+    allow read:if signedIn();
+    allow create:if signedIn()&&request.auth.uid==uid&&request.resource.data.userId==uid;
+    allow delete:if signedIn()&&request.auth.uid==uid;
+    allow update:if false;
+   }
+   match /comments/{cid}{
+    allow read:if signedIn();
+    allow create:if signedIn()&&request.resource.data.authorId==request.auth.uid&&validText(request.resource.data.text,500);
+    allow update,delete:if signedIn()&&resource.data.authorId==request.auth.uid;
+   }
+  }
+ }
+}
